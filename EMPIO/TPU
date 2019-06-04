@@ -1,0 +1,11 @@
+del EMPio.tpu
+If Exist *.obj del *.obj
+tasm/m2/mx brow
+tasm/m2/mx get
+tasm/m2/mx io
+tasm/m2/mx prompt
+tasm/m2/mx string
+tasm/m2/mx prompt
+tasm/m2/mx CMFMUSIC
+tpc EMPio
+del *.obj
