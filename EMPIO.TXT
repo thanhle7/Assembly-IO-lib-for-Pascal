@@ -1,0 +1,132 @@
+{
+                 Input-Output Library for Turbo Pascal 7+
+                 Extra data types and procedures.
+
+                 Product of AZ-Group.
+                 By : Pham Du Liem & Le Ngoc Thanh.
+                 Released on 13/03/1998
+}
+unit EMPIO;
+  type
+    Date    = record
+                 Year : array [1..4] of char;
+                 Month: array [1..2] of char;
+                 Day  : array [1..2] of char;
+              end;
+{------------- Constant declare ----------------------------------------------}
+{-------- Used for Inkey : ( include ASCII code and keyboard scan code )}
+      SPACE_BAR       =    $3920;       CtrlLeft_key        =    $7300;
+      Enter_key       =    $1C0D;       CtrlRight_key       =    $7400;
+      ESC_key         =    $011B;       CtrlHome_key        =    $7700;
+      Tab_key         =    $0F09;       CtrlEnd_key         =    $7500;
+      ShiftTab_key    =    $0F00;       CtrlPgUp_key        =    $8400;
+      Up_key          =    $4800;       CtrlPgDn_key        =    $7600;
+      Down_key        =    $5000;
+      Left_key        =    $4B00;       Black         = 0;
+      Right_key       =    $4D00;       Blue          = 1;
+      Home_key        =    $4700;       Green         = 2;
+      End_key         =    $4F00;       Cyan          = 3;
+      PgUp_key        =    $4900;       Red           = 4;
+      PgDn_key        =    $5100;       Magenta       = 5;
+      F1_key          =    $3B00;       Brown         = 6;
+      F2_key          =    $3C00;       LightGray     = 7;
+      F3_key          =    $3D00;       DarkGray      = 8;
+      F4_key          =    $3E00;       LightBlue     = 9;
+      F5_key          =    $3F00;       LightGreen    = 10;
+      F6_key          =    $4000;       LightCyan     = 11;
+      F7_key          =    $4100;       LightRed      = 12;
+      F8_key          =    $4200;       LightMagenta  = 13;
+      F9_key          =    $4300;       Yellow        = 14;
+      F10_key         =    $4400;       White         = 15;
+                                        Blink         = 128;
+{------- Used for Zoom,Box procedure }  {------- Used for Out_function }
+      Single_frame    =   'ÚÄ¿³ÙÄÀ³ ';        Rewrite_mode    =   0          ;
+      Single_bar      =   'ÃÄ´'      ;        Append_mode     =   1          ;
+      Single_pol      =   'Â³Á'      ;
+                                        {------- Used for Date_type }
+      Double_frame    =   'ÉÍ»º¼ÍÈº ';        American_Type   =   0          ;
+      Double_bar      =   'ÖÍ¹'      ;        French_Type     =   1          ;
+      Double_pol      =   'Ð³Ò'      ;
+                      Empty_Date :date= (Year:'    ' ; Month:'  ' ; Day:'  ');
+{------- Prompt & get buffer size }
+      Max_get       = 50 ;      Max_prompt    = 50 ;
+{------------- Variable declare ----------------------------------------------}
+  var
+     Video_seg     : word;        get_Confirm   :  Boolean;
+     CRT_port      : word;        GS_Check      :  Boolean;
+     Check_snow    : Boolean;     Prompt_point  :  word;
+     color         : byte;        Prompt_count  :  word;
+     row           : byte;        Brow_point    :  word;
+     col           : byte;        Out_Stat      :  word;
+     Zoom_mode     : byte;        Prow          :  word;
+     Box_base      : Byte;        Pcol          :  word;
+     Exit_key      :  word  ;
+     Exit_key1     :  word  ;     Date_separate : char ;
+     Exit_key2     :  word  ;     Date_type     : byte ;
+     EMP_VNI_KEY   :  boolean; { used to turn vni-keyboard ON | OFF }
+     get_color     :  byte  ;     Hour          : byte;
+     get_count     :  word  ;     Minute        : byte;
+     get_point     :  word  ;     Second        : byte;
+     Last_pos      :  word  ;     Mili_Second   : byte;
+     get_pos       :  byte  ;     Get_Mode      :  byte  ;
+  Procedure Box(x1,y1,x2,y2:word ; a :str_box );
+  Procedure Zoom(x1,y1,x2,y2:word ; a :str_box );
+  Procedure scroll(x1,y1,x2,y2:word;line_scroll:integer);
+  Procedure Set_Attrib(x1,y1,x2,y2:word;color:byte);
+  Procedure Fill_char(Char_fill:char;Fill_count:word);
+  procedure Clear   ;                  procedure Delay(Count:word);
+  procedure Backup_Screen;             procedure Gettime;
+  procedure Restore_Screen;            procedure Sound(Freq:word);
+  Procedure Cursor_on;                 procedure Sound_on;
+  Procedure Cursor_off;                procedure Sound_off;
+  procedure GetIntVec(IntNo: Byte; var Vector: Pointer);
+  procedure SetIntVec(IntNo: Byte; Vector: Pointer);
+  procedure EMP_VNI_Load;    procedure EMP_VNI_UnLoad;
+  procedure RunAddr(Addr: Pointer);
+
+{ For compatible with CRT unit ---------------------}
+  Procedure Gotoxy(col,row:word);
+  Procedure TextColor(color:byte);
+  Procedure TextBackground(color:byte);
+  procedure ClrScr;
+  Procedure NoSound;
+{---------------------------------------------------}
+  procedure get_str(var ZZZ);        procedure Valid(KKK : pointer);
+  procedure Readg;                   procedure SubProc(KKK : pointer);
+  procedure Disp_get;                function  Inkey      : word;
+  procedure getc(var ZZZ);           function  Inchar     : char;
+  procedure gets(var ZZZ);           function  KeyPressed : boolean;
+  procedure geti(var ZZZ);           procedure WScr     ;
+  procedure getl(var ZZZ);           procedure Write_Str;
+  procedure getr(var ZZZ);           Procedure Prompt(chuoi:string);
+  procedure getd(var ZZZ);           Procedure Read_Prompt;
+  procedure pict(size,dec: word);
+  Procedure Brow(row,col,ele_size,disp_num,max_num:word;buffer:pointer);
+{-Print function------------------------------------}
+  Procedure Out_To_File(file_name:string;mode:byte);
+  Procedure Out_To_screen                ;
+  Procedure Eject                        ;
+  Procedure Reset_PRN                    ;
+{-Date function-------------------------------------}
+  Function Dtoc(var Date_value: date)  :string;
+  Function Day(var Date_value: date)   :integer;
+  Function Month(var Date_value: date) :integer;
+  Function Year(var Date_value: date)  :integer;
+{-String function-----------------------------------}
+  Function UpChar(AAA : char) : char;
+  Function LoChar(AAA : char) : char;
+  Function UpString(AAA : string) : string;
+  Function LoString(AAA : string) : string;
+  Function Replicate(AAA : char;Repl_num:byte) : string;
+  Procedure Fill_Mem(ZZZ : pointer ; AAA : char ; Fill_num : integer);
+  Function Trim (ZZZ:string) : string;
+  Function RTrim(ZZZ:string) : string;
+  Function LTrim(ZZZ:string) : string;
+  Function Left (ZZZ:string;left_num:byte): string;
+  Function Right(ZZZ:string;Right_num:byte): string;
+  Function Subs (ZZZ:string;begin_pos,str_length:byte): string;
+{--- CMF Music -----------------------}
+  Function  CMFinit(CmfOK: Pointer): Boolean;
+  Procedure CMFPlay(DataBuf: Pointer);          Procedure CMFPause;
+  Procedure CMFStop;                            Procedure CMFGoOn;
+
