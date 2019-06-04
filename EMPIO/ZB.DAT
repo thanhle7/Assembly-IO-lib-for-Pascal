@@ -1,0 +1,477 @@
+; Zoom_Box module
+; Include file of IO.ASM
+
+;       Single_frame    db   9,'⁄ƒø≥Ÿƒ¿≥ '
+;       Single_bar      db   3,'√ƒ¥'
+;       Single_pol      db   3,'¬≥¡'
+;
+;       Double_frame    db   9,'…Õª∫ºÕ»∫ ',0
+;       Double_bar      db   3,'ÃÕπ'
+;       Double_pol      db   3,'À∫ '
+;
+;  Public  Box_base,Zoom_mode,Single_frame,Single_bar,Single_pol
+;  Public  Double_frame,Double_bar,Double_pol
+;
+;       Str_Frame       db   10 dup (0)
+;       Zoom_Step       DW    1
+;       ZA1             dw    0
+;       ZA2             dw    0
+;       Zoom_flag       db    0
+
+Public  box,zoom,scroll,Set_Attrib,Fill_char
+
+Fill_char     proc  far
+        ;procedure Fill_char(char_fill:char;Fill_count:word);
+        push  bp
+        mov   bp,sp
+        mov   ah,row
+        mov   al,col
+        call  Make_Video_Addr
+        mov   ah,Color
+        mov   al,byte ptr ss:[bp+8]
+        mov   cx,word ptr ss:[bp+6]
+        cld
+        rep   stosw
+        pop   bp
+        retf  4
+Fill_char     endp
+
+Set_Attrib    proc   far
+        ;procedure Set_Attrib(row1,col1,row2,col2,Color:word)
+
+        push  bp
+        mov   bp,sp
+        mov   ax,word ptr [bp+14]
+        mov   cx,word ptr [bp+12]
+        mov   ch,al
+        mov   ax,word ptr [bp+10]
+        mov   dx,word ptr [bp+ 8]
+        mov   dh,al
+        mov   al,byte ptr [bp+ 6]
+        xchg  cx,dx
+        call  Make_Video_Addr
+        xchg  dx,cx
+        sub   dx,cx
+        add   dx,0101h
+
+        mov   cl,dh
+        xor   ch,ch
+SA_1:
+        push  cx
+        push  di
+        mov   cl,dl
+        xor   ch,ch
+SA_2:
+        inc   di
+        stosb
+        loop  SA_2
+
+        pop   di
+        add   di,160
+        pop   cx
+        loop  SA_1
+
+        pop   bp
+        retf  10
+
+Set_Attrib    endp
+
+Scroll  proc   far
+        ;procedure Scroll(row1,col1,row2,col2,line_scroll:word)
+
+        push  bp
+        mov   bp,sp
+        mov   ax,word ptr [bp+14]
+        mov   cx,word ptr [bp+12]
+        mov   ch,al
+        mov   ax,word ptr [bp+10]
+        mov   dx,word ptr [bp+ 8]
+        mov   dh,al
+
+        mov   bh,byte ptr Color
+        mov   ax,word ptr [bp+ 6]
+        call  scroll_asm
+        pop   bp
+        ret   10
+
+Scroll  endp
+
+Scroll_asm  proc  near
+        mov    ah,06
+        cmp    al,-1
+        jg     SA1
+        inc    ah
+        neg    al
+SA1:
+        int    10h
+        ret
+Scroll_asm  endp
+
+zoom    proc  far
+        mov   byte ptr zoom_flag,-1
+        jmp   zoom_box
+zoom    endp
+
+box     proc  far
+        mov   byte ptr zoom_flag,0
+        jmp   zoom_box
+
+box     endp
+
+zoom_box   proc  near
+
+        ; Procedure Box (x1,y1,x2,y2:word ; a :str_box )
+        ; Procedure Zoom(x1,y1,x2,y2:word ; a :str_box )
+        push    bp
+        mov     bp,sp
+        push    ds
+        pop     es
+        lea     di,Str_Frame
+        lds     si,[bp+6]
+        mov     cx,10
+        cld
+        rep     movsb
+        push    es
+        pop     ds
+        mov     es,Video_Seg
+
+        mov     ax,word ptr [bp+16]
+        mov     bx,word ptr [bp+14]
+        mov     bh,al
+        mov     word ptr ZA1,bx
+        mov     ax,word ptr [bp+12]
+        mov     cx,word ptr [bp+10]
+        mov     ch,al
+        mov     word ptr ZA2,cx
+        cmp     byte ptr zoom_flag,-1
+        je      zoom_begin
+        jmp     box_begin
+
+zoom_begin:
+
+        cmp     ch,bh                   ;
+        jbe     Zoom_box_end            ; Kiém tra t°nh hÛp l¨ cúa c†c
+        cmp     cl,bl                   ;  tîa ≠õ
+        jbe     Zoom_box_end            ;
+
+        add     cx,bx                   ; Khˆi ≠‰u t• tÉm
+        shr     ch,1                    ;  X = (X1+X2)/2
+        shr     cl,1                    ;  Y = (Y1+Y2)/2
+        mov     bx,cx
+        inc     ch                      ; K°ch thüÙc ≠‰u cúa khung lÖ 1:1
+        inc     cl
+        mov     ax,0101h                ; Sñ gia cho c†c chiãu sau möi l‰n
+        mov     word ptr Zoom_Step,7    ; hién th´
+        call    zoom_pass
+
+Zoom_box_end:
+        pop     bp
+        retf    12
+
+Box_begin:
+        mov     ah,Color
+        cmp     bh,ch
+        ja      Zoom_box_end
+        je      horizontal              ; Ch© kÅ mõt ≠üıng ngang
+
+        cmp     bl,cl
+        ja      Zoom_box_end
+        je      vertical                ; Ch© kÅ mõt ≠üıng dîc
+
+        call    box2                    ; VÑ mõt khung ≠‰y ≠ú
+
+        cmp     Box_base,0              ; Nâu Box_base<>0 sÑ t‚o b¢ng
+        je      Zoom_box_end            ; cho khung v•a ≠ü¯c vÑ
+        call    Base
+
+        jmp     Zoom_box_end
+
+Horizontal:
+        mov     al,byte ptr Str_Frame[2]
+        call    fill
+        jmp     H_V
+
+Vertical:
+        mov     al,byte ptr Str_Frame[2]
+        call    fill
+H_V:
+        mov     dx,bx                   ; VÑ kÓ t® biàn 1
+        mov     al,byte ptr Str_Frame[1]
+        call    Putchar
+
+        mov     dx,cx                   ; VÑ kÓ t® biàn 2
+        mov     al,byte ptr Str_Frame[3]
+        call    Putchar
+
+        jmp     Zoom_box_end
+
+Zoom_box        endp
+
+
+Zoom_pass     proc  near
+        ;
+        ; AH = büÙc tiân cho chiãu cao
+        ; AL = büÙc tiân cho chiãu rõng
+        ;
+        ; BX = tîa dõ 1 cúa khung ≠‰u tiàn
+        ; CX = tîa dõ 2 cúa khung ≠‰u tiàn
+        ;
+        push    ax
+        call    ZP_box                  ; VÑ khung hi¨n t‚i
+        call    Zoom_delay              ; T‚o thıi gian trè
+        pop     ax
+        sub     bh,ah                   ; Mˆ rõng chiãu cao (ph°a tràn)
+        cmp     bh,byte ptr ZA1[1]      ; Kiém tra biàn
+        jge     Z1                      ;
+        mov     bh,byte ptr ZA1[1]      ; Æ· vü¯t qu† biàn
+Z1:
+        sub     bl,al                   ; Mˆ rõng chiãu rõng (bàn tr†i)
+        cmp     bl,byte ptr ZA1[0]      ; Kiém tra biàn
+        jge     Z2                      ;
+        mov     bl,byte ptr ZA1[0]      ; Æ· vü¯t qu† biàn
+Z2:
+        add     ch,ah                   ; Mˆ rõng chiãu cao (ph°a düÙi)
+        cmp     ch,byte ptr ZA2[1]
+        jbe     Z3
+        mov     ch,byte ptr ZA2[1]
+Z3:
+        add     cl,al                   ; Mˆ rõng chiãu rõng (bàn ph‡i)
+        cmp     cl,byte ptr ZA2[0]
+        jbe     Z4
+        mov     cl,byte ptr ZA2[0]
+Z4:
+        dec     word PTR Zoom_Step
+        shl     ax,1                    ; TËng büÙc tiân
+        shl     ax,1                    ; ( g„p 4 l‰n )
+        cmp     bx,word ptr ZA1
+        jne     Zoom_pass               ; Kiém tra k°ch thüÙc
+        cmp     cx,word ptr ZA2         ;
+        jne     Zoom_pass
+
+        call    ZP_box                  ; T‚o khung cuñi cóng
+Z7:
+        ret
+Zoom_pass       endp
+
+ZP_box  proc    near
+
+        cmp     Zoom_mode,0             ; Zoom_mode<>0 --> bça khung rõng
+        je      ZP0
+        cmp     Zoom_step,5             ; Ch© ch„p nhÁn mode nÖy khi khung
+        jbe     ZP1                     ; ≠ú lÙn
+ZP0:
+        call    box2
+        jmp     ZP2
+ZP1:
+        mov     ah,color
+        mov     al,byte ptr Str_Frame[9]
+        call    Fill                    ; T‚o mõt c†i nãn bÍng k°ch thüÙc khung
+        add     bx,0103h                ; sau ≠¢ vÑ mõt khung vÙi k°ch thüÙc
+        sub     cx,0103h                ; nhë hÛn --> bça rõng
+        call    Box_no_fill             ;
+        sub     bx,0103h
+        add     cx,0103h
+ZP2:
+        cmp     Zoom_step,6
+        ja      ZP3
+        call    base                    ;
+ZP3:
+        ret
+ZP_box  endp
+
+H_size  db      0,0
+V_size  db      0,0
+
+Fill    proc    near
+        ; ah :  attrib
+        ; al :  char
+        ; bx :  toa do 1
+        ; cx :  toa do 2
+
+        push    ax
+        push    cx
+        push    dx
+
+        mov     dl,cl
+        sub     dl,bl
+        inc     dl
+        mov     H_size,dl    ; Bã rõng
+
+        mov     dl,ch
+        sub     dl,bh
+        inc     dl
+        mov     V_size,dl    ; Chiãu cao
+
+        mov     dx,bx
+        call    Make_Video_addr
+Fill_1:
+        mov     cx,word ptr H_size
+        push    cx
+        rep     stosw
+        pop     cx
+        shl     cx,1
+        add     di,160
+        sub     di,cx
+        call    Video_wait
+        dec     V_size
+        jnz     Fill_1
+
+        pop     dx
+        pop     cx
+        pop     ax
+        ret
+
+Fill    endp
+
+Putchar proc   near
+        push    es
+        push    di
+        push    ax
+        call    Make_Video_addr
+        mov     ah,Color
+        stosw
+        pop     ax
+        pop     di
+        pop     es
+        ret
+Putchar endp
+
+Box1    proc  near
+        ; bx  : toa do 1
+        ; cx  : toa do 2
+
+        mov     dx,bx                             ; DX : tîa ≠õ g¢c 1
+        mov     al,byte ptr Str_Frame[1]
+        Call    Putchar
+
+        mov     dl,cl                             ; DX : tîa ≠õ g¢c 2
+        mov     al,byte ptr Str_Frame[3]
+        Call    Putchar
+
+        mov     dx,cx                             ; DX : tîa ≠õ g¢c 3
+        mov     al,byte ptr Str_Frame[5]
+        Call    Putchar
+
+        mov     dl,bl                             ; DX : tîa ≠õ g¢c 4
+        mov     al,byte ptr Str_Frame[7]
+        Call    Putchar
+
+        ret
+
+box1    endp
+
+box2    proc  near
+        ;
+        ; BX = tîa ≠õ 1
+        ; CX = tîa ≠õ 2
+        ;
+
+        mov     ah,Color
+        cmp     byte ptr Str_Frame[0],9
+        jb      Box_no_fill
+        mov     al,byte ptr Str_Frame[9]
+        call    fill
+Box_no_fill:
+        push    cx
+        mov     ch,bh
+        mov     al,byte ptr Str_Frame[2]
+        call    fill
+        pop     cx
+
+        push    bx
+        mov     bl,cl
+        mov     al,byte ptr Str_Frame[4]
+        call    fill
+        pop     bx
+
+        push    bx
+        mov     bh,ch
+        mov     al,byte ptr Str_Frame[6]
+        call    fill
+        pop     bx
+
+        push    cx
+        mov     cl,bl
+        mov     al,byte ptr Str_Frame[8]
+        call    fill
+        pop     cx
+        call    box1
+box2_end:
+        ret
+Box2    endp
+
+Base_color      equ     7
+
+Base    proc  near
+        ; bx : toa do dau
+        ; cx : toa do cuoi
+
+        push    ax
+        push    cx
+        mov     dx,cx
+        cmp     cl,79
+        je      base2
+
+        mov     dh,bh
+        mov     dl,cl  ; goc tren phai
+        inc     dl
+        inc     dh
+        call    Make_Video_addr
+        sub     cx,bx
+        mov     cl,ch
+        xor     ch,ch
+        inc     cl
+Base1:
+        mov     byte ptr es:[di+1],Base_color
+        cmp     dl,78
+        je      base11
+        mov     byte ptr es:[di+3],Base_color
+base11:
+        add     di,160
+        loop    base1
+
+        pop     cx
+        push    cx
+Base2:
+        cmp     ch,24
+        jae     Base_end
+
+        mov     dh,ch
+        mov     dl,bl
+        inc     dh
+        inc     dl
+        inc     dl
+        call    Make_Video_addr
+
+        sub     cx,bx
+        xor     ch,ch
+        dec     cl
+Base3:
+        mov     byte ptr es:[di+1],Base_color
+        inc     di
+        inc     di
+        loop    base3
+Base_end:
+        pop     cx
+        pop     ax
+        ret
+
+Base    endp
+
+Zoom_delay      proc    near
+
+        push    ax
+        push    cx
+        push    dx
+        mov     cx,1
+        add     cl,byte ptr Zoom_step
+        call    _Delay
+        pop     dx
+        pop     cx
+        pop     ax
+        ret
+Zoom_delay      endp
+
+;------------------------
+
+
